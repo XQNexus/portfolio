@@ -1,0 +1,1826 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Operations & Automation System Dashboard</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        /* ═══════════════════════════════════════════════════════════════
+           CSS VARIABLES - SYSTEM DESIGN TOKENS
+           ═══════════════════════════════════════════════════════════════ */
+        :root {
+            /* Colors */
+            --bg-primary: #000000;
+            --bg-secondary: #0a0a0f;
+            --bg-surface: rgba(15, 15, 25, 0.6);
+            --bg-glass: rgba(255, 255, 255, 0.02);
+            --border-glass: rgba(255, 255, 255, 0.06);
+            --border-glow: rgba(0, 229, 255, 0.3);
+            
+            /* Accent Colors */
+            --accent-cyan: #00e5ff;
+            --accent-blue: #2979ff;
+            --accent-purple: #7c4dff;
+            --accent-green: #00e676;
+            --accent-orange: #ff9100;
+            
+            /* Text Colors */
+            --text-primary: #ffffff;
+            --text-secondary: #b0b0c0;
+            --text-muted: #6a6a7a;
+            
+            /* Fonts */
+            --font-display: 'Inter', system-ui, sans-serif;
+            --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
+            
+            /* Spacing System */
+            --space-xs: 0.5rem;
+            --space-sm: 1rem;
+            --space-md: 1.5rem;
+            --space-lg: 2rem;
+            --space-xl: 3rem;
+            --space-2xl: 4rem;
+            --space-3xl: 6rem;
+            
+            /* Container */
+            --container-max: 1400px;
+            --container-padding: 2rem;
+            
+            /* Transitions */
+            --transition-fast: 0.15s ease;
+            --transition-base: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            --transition-slow: 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+            
+            /* Border Radius */
+            --radius-sm: 6px;
+            --radius-md: 12px;
+            --radius-lg: 20px;
+            --radius-full: 9999px;
+        }
+
+        /* ═══════════════════════════════════════════════════════════════
+           RESET & BASE STYLES
+           ═══════════════════════════════════════════════════════════════ */
+        *, *::before, *::after {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html {
+            scroll-behavior: smooth;
+            font-size: 16px;
+        }
+
+        body {
+            font-family: var(--font-display);
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.6;
+            overflow-x: hidden;
+            min-height: 100vh;
+        }
+
+        ::selection {
+            background: var(--accent-cyan);
+            color: var(--bg-primary);
+        }
+
+        /* ═══════════════════════════════════════════════════════════════
+           BOOT SCREEN / LOADING ANIMATION
+           ═══════════════════════════════════════════════════════════════ */
+        #boot-screen {
+            position: fixed;
+            inset: 0;
+            background: var(--bg-primary);
+            z-index: 10000;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            transition: opacity 0.8s ease, visibility 0.8s ease;
+        }
+
+        #boot-screen.hidden {
+            opacity: 0;
+            visibility: hidden;
+        }
+
+        .boot-logo {
+            font-family: var(--font-mono);
+            font-size: clamp(1rem, 3vw, 1.5rem);
+            color: var(--accent-cyan);
+            margin-bottom: var(--space-xl);
+            letter-spacing: 0.3em;
+            text-transform: uppercase;
+        }
+
+        .boot-loader {
+            width: 300px;
+            max-width: 80vw;
+        }
+
+        .boot-text {
+            font-family: var(--font-mono);
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            margin-bottom: var(--space-sm);
+            min-height: 1.5em;
+        }
+
+        .boot-progress-track {
+            width: 100%;
+            height: 2px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: var(--radius-full);
+            overflow: hidden;
+        }
+
+        .boot-progress-bar {
+            height: 100%;
+            width: 0%;
+            background: linear-gradient(90deg, var(--accent-cyan), var(--accent-blue));
+            border-radius: var(--radius-full);
+            box-shadow: 0 0 20px var(--accent-cyan);
+            transition: width 0.3s ease;
+        }
+
+        .boot-modules {
+            margin-top: var(--space-lg);
+            font-family: var(--font-mono);
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            text-align: left;
+            max-height: 150px;
+            overflow: hidden;
+        }
+
+        .boot-modules p {
+            margin: 0.25rem 0;
+            opacity: 0;
+            animation: fadeIn 0.3s ease forwards;
+        }
+
+        @keyframes fadeIn {
+            to { opacity: 1; }
+        }
+
+        /* ═══════════════════════════════════════════════════════════════
+           ANIMATED BACKGROUND
+           ═══════════════════════════════════════════════════════════════ */
+        .bg-container {
+            position: fixed;
+            inset: 0;
+            z-index: -1;
+            overflow: hidden;
+        }
+
+        .bg-grid {
+            position: absolute;
+            inset: 0;
+            background-image: 
+                linear-gradient(rgba(0, 229, 255, 0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0, 229, 255, 0.03) 1px, transparent 1px);
+            background-size: 60px 60px;
+            animation: gridMove 20s linear infinite;
+        }
+
+        @keyframes gridMove {
+            0% { transform: translate(0, 0); }
+            100% { transform: translate(60px, 60px); }
+        }
+
+        .bg-glow {
+            position: absolute;
+            border-radius: 50%;
+            filter: blur(100px);
+            opacity: 0.15;
+            animation: float 15s ease-in-out infinite;
+        }
+
+        .bg-glow-1 {
+            width: 600px;
+            height: 600px;
+            background: var(--accent-cyan);
+            top: -200px;
+            right: -200px;
+        }
+
+        .bg-glow-2 {
+            width: 500px;
+            height: 500px;
+            background: var(--accent-purple);
+            bottom: -150px;
+            left: -150px;
+            animation-delay: -7s;
+        }
+
+        .bg-glow-3 {
+            width: 400px;
+            height: 400px;
+            background: var(--accent-blue);
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            animation-delay: -3s;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translate(0, 0) scale(1); }
+            33% { transform: translate(30px, -30px) scale(1.05); }
+            66% { transform: translate(-20px, 20px) scale(0.95); }
+        }
+
+        /* ═══════════════════════════════════════════════════════════════
+           NAVIGATION
+           ═══════════════════════════════════════════════════════════════ */
+        .nav {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 100;
+            padding: var(--space-md) var(--container-padding);
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-bottom: 1px solid var(--border-glass);
+            transition: var(--transition-base);
+        }
+
+        .nav-inner {
+            max-width: var(--container-max);
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .nav-brand {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+
+        .nav-logo {
+            font-family: var(--font-mono);
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: var(--accent-cyan);
+            letter-spacing: 0.1em;
+            text-decoration: none;
+        }
+
+        .nav-identity {
+            font-family: var(--font-mono);
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            letter-spacing: 0.05em;
+        }
+
+        .nav-status {
+            display: flex;
+            align-items: center;
+            gap: var(--space-sm);
+            font-family: var(--font-mono);
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            background: var(--accent-green);
+            border-radius: 50%;
+            box-shadow: 0 0 10px var(--accent-green);
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.7; transform: scale(1.2); }
+        }
+
+        /* ═══════════════════════════════════════════════════════════════
+           CONTAINER & SECTIONS
+           ═══════════════════════════════════════════════════════════════ */
+        .container {
+            max-width: var(--container-max);
+            margin: 0 auto;
+            padding: 0 var(--container-padding);
+        }
+
+        section {
+            padding: var(--space-3xl) 0;
+            position: relative;
+        }
+
+        .section-header {
+            margin-bottom: var(--space-xl);
+        }
+
+        .section-label {
+            font-family: var(--font-mono);
+            font-size: 0.75rem;
+            color: var(--accent-cyan);
+            text-transform: uppercase;
+            letter-spacing: 0.2em;
+            margin-bottom: var(--space-xs);
+        }
+
+        .section-title {
+            font-size: clamp(1.75rem, 4vw, 2.5rem);
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: var(--space-sm);
+        }
+
+        .section-subtitle {
+            font-size: clamp(1rem, 2vw, 1.125rem);
+            color: var(--text-secondary);
+            max-width: 600px;
+        }
+
+        /* ═══════════════════════════════════════════════════════════════
+           HERO SECTION
+           ═══════════════════════════════════════════════════════════════ */
+        .hero {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            padding-top: 80px;
+        }
+
+        .hero-content {
+            width: 100%;
+        }
+
+        .hero-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: var(--space-xs);
+            background: rgba(0, 229, 255, 0.1);
+            border: 1px solid rgba(0, 229, 255, 0.3);
+            padding: var(--space-xs) var(--space-md);
+            border-radius: var(--radius-full);
+            font-family: var(--font-mono);
+            font-size: 0.8rem;
+            color: var(--accent-cyan);
+            margin-bottom: var(--space-lg);
+        }
+
+        .hero-title {
+            font-size: clamp(2rem, 6vw, 4rem);
+            font-weight: 700;
+            line-height: 1.1;
+            margin-bottom: var(--space-md);
+        }
+
+        .hero-title .line {
+            display: block;
+            overflow: hidden;
+        }
+
+        .hero-title .word {
+            display: inline-block;
+            opacity: 0;
+            transform: translateY(100%);
+            animation: slideUp 0.6s ease forwards;
+        }
+
+        .hero-title .line:nth-child(1) .word { animation-delay: 0.1s; }
+        .hero-title .line:nth-child(2) .word { animation-delay: 0.2s; }
+        .hero-title .line:nth-child(3) .word { animation-delay: 0.3s; }
+
+        @keyframes slideUp {
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .hero-identity {
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: var(--space-xs);
+            margin-bottom: var(--space-md);
+            font-family: var(--font-mono);
+        }
+
+        .identity-name {
+            font-size: clamp(1.1rem, 2.5vw, 1.5rem);
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .identity-divider {
+            color: var(--accent-cyan);
+            font-size: 1.2rem;
+        }
+
+        .identity-title {
+            font-size: clamp(0.9rem, 2vw, 1.1rem);
+            color: var(--accent-cyan);
+        }
+
+        .hero-subtitle {
+            font-family: var(--font-mono);
+            font-size: clamp(1rem, 2vw, 1.25rem);
+            color: var(--text-secondary);
+            margin-bottom: var(--space-xl);
+            min-height: 2em;
+        }
+
+        .typing-cursor {
+            display: inline-block;
+            width: 2px;
+            height: 1.2em;
+            background: var(--accent-cyan);
+            margin-left: 2px;
+            animation: blink 0.8s step-end infinite;
+            vertical-align: text-bottom;
+        }
+
+        @keyframes blink {
+            50% { opacity: 0; }
+        }
+
+        .hero-buttons {
+            display: flex;
+            flex-wrap: wrap;
+            gap: var(--space-sm);
+            margin-bottom: var(--space-2xl);
+        }
+
+        /* ═══════════════════════════════════════════════════════════════
+           BUTTONS
+           ═══════════════════════════════════════════════════════════════ */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: var(--space-xs);
+            padding: 0.875rem 1.75rem;
+            font-family: var(--font-mono);
+            font-size: 0.85rem;
+            font-weight: 500;
+            text-decoration: none;
+            border-radius: var(--radius-sm);
+            transition: var(--transition-base);
+            cursor: pointer;
+            border: none;
+            white-space: nowrap;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--accent-cyan), var(--accent-blue));
+            color: var(--bg-primary);
+            box-shadow: 0 4px 20px rgba(0, 229, 255, 0.3);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 30px rgba(0, 229, 255, 0.4);
+        }
+
+        .btn-secondary {
+            background: transparent;
+            color: var(--text-primary);
+            border: 1px solid var(--border-glass);
+        }
+
+        .btn-secondary:hover {
+            border-color: var(--accent-cyan);
+            background: rgba(0, 229, 255, 0.05);
+        }
+
+        /* ═══════════════════════════════════════════════════════════════
+           METRICS DASHBOARD
+           ═══════════════════════════════════════════════════════════════ */
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: var(--space-md);
+        }
+
+        .metric-card {
+            background: var(--bg-glass);
+            border: 1px solid var(--border-glass);
+            border-radius: var(--radius-md);
+            padding: var(--space-lg);
+            text-align: center;
+            transition: var(--transition-base);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .metric-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, var(--accent-cyan), transparent);
+            opacity: 0;
+            transition: var(--transition-base);
+        }
+
+        .metric-card:hover {
+            border-color: var(--border-glow);
+            transform: translateY(-4px);
+            box-shadow: 0 10px 40px rgba(0, 229, 255, 0.1);
+        }
+
+        .metric-card:hover::before {
+            opacity: 1;
+        }
+
+        .metric-icon {
+            width: 48px;
+            height: 48px;
+            margin: 0 auto var(--space-sm);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(0, 229, 255, 0.1);
+            border-radius: var(--radius-md);
+            color: var(--accent-cyan);
+            font-size: 1.5rem;
+        }
+
+        .metric-value {
+            font-family: var(--font-mono);
+            font-size: clamp(1.5rem, 3vw, 2.5rem);
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: var(--space-xs);
+        }
+
+        .metric-value .prefix {
+            color: var(--accent-green);
+        }
+
+        .metric-label {
+            font-family: var(--font-mono);
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+        }
+
+        /* ═══════════════════════════════════════════════════════════════
+           SYSTEM MODULES
+           ═══════════════════════════════════════════════════════════════ */
+        .modules-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: var(--space-md);
+        }
+
+        .module-card {
+            background: var(--bg-glass);
+            border: 1px solid var(--border-glass);
+            border-radius: var(--radius-md);
+            padding: var(--space-lg);
+            transition: var(--transition-base);
+            position: relative;
+        }
+
+        .module-card::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            border-radius: var(--radius-md);
+            opacity: 0;
+            transition: var(--transition-base);
+            pointer-events: none;
+        }
+
+        .module-card:hover {
+            border-color: var(--accent-cyan);
+            transform: translateY(-4px);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3), 0 0 40px rgba(0, 229, 255, 0.1);
+        }
+
+        .module-header {
+            display: flex;
+            align-items: flex-start;
+            gap: var(--space-sm);
+            margin-bottom: var(--space-md);
+        }
+
+        .module-icon {
+            width: 44px;
+            height: 44px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, rgba(0, 229, 255, 0.2), rgba(41, 121, 255, 0.2));
+            border-radius: var(--radius-sm);
+            font-size: 1.25rem;
+            flex-shrink: 0;
+        }
+
+        .module-info h3 {
+            font-family: var(--font-mono);
+            font-size: 1rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 0.25rem;
+        }
+
+        .module-info .tag {
+            font-family: var(--font-mono);
+            font-size: 0.7rem;
+            color: var(--accent-cyan);
+            background: rgba(0, 229, 255, 0.1);
+            padding: 2px 8px;
+            border-radius: var(--radius-full);
+        }
+
+        .module-desc {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+            line-height: 1.6;
+            margin-bottom: var(--space-md);
+        }
+
+        .module-tech {
+            display: flex;
+            flex-wrap: wrap;
+            gap: var(--space-xs);
+        }
+
+        .tech-tag {
+            font-family: var(--font-mono);
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            background: var(--bg-surface);
+            padding: 4px 10px;
+            border-radius: var(--radius-sm);
+            border: 1px solid var(--border-glass);
+        }
+
+        /* ═══════════════════════════════════════════════════════════════
+           TIMELINE / EVOLUTION
+           ═══════════════════════════════════════════════════════════════ */
+        .timeline {
+            position: relative;
+            max-width: 800px;
+            margin: 0 auto;
+            padding-left: 40px;
+        }
+
+        .timeline::before {
+            content: '';
+            position: absolute;
+            left: 15px;
+            top: 0;
+            bottom: 0;
+            width: 2px;
+            background: linear-gradient(180deg, var(--accent-cyan), var(--accent-purple), var(--border-glass));
+        }
+
+        .timeline-item {
+            position: relative;
+            padding-bottom: var(--space-xl);
+            padding-left: var(--space-lg);
+        }
+
+        .timeline-item:last-child {
+            padding-bottom: 0;
+        }
+
+        .timeline-marker {
+            position: absolute;
+            left: -25px;
+            top: 0;
+            width: 32px;
+            height: 32px;
+            background: var(--bg-primary);
+            border: 2px solid var(--accent-cyan);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: var(--font-mono);
+            font-size: 0.75rem;
+            color: var(--accent-cyan);
+            z-index: 1;
+            transition: var(--transition-base);
+        }
+
+        .timeline-item:hover .timeline-marker {
+            background: var(--accent-cyan);
+            color: var(--bg-primary);
+            box-shadow: 0 0 20px var(--accent-cyan);
+        }
+
+        .timeline-content {
+            background: var(--bg-glass);
+            border: 1px solid var(--border-glass);
+            border-radius: var(--radius-md);
+            padding: var(--space-lg);
+            transition: var(--transition-base);
+        }
+
+        .timeline-item:hover .timeline-content {
+            border-color: var(--border-glow);
+            box-shadow: 0 10px 40px rgba(0, 229, 255, 0.1);
+        }
+
+        .timeline-phase {
+            font-family: var(--font-mono);
+            font-size: 0.7rem;
+            color: var(--accent-purple);
+            text-transform: uppercase;
+            letter-spacing: 0.15em;
+            margin-bottom: var(--space-xs);
+        }
+
+        .timeline-title {
+            font-size: 1.125rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: var(--space-xs);
+        }
+
+        .timeline-desc {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+            line-height: 1.6;
+        }
+
+        /* ═══════════════════════════════════════════════════════════════
+           PROJECT CARDS
+           ═══════════════════════════════════════════════════════════════ */
+        .projects-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: var(--space-lg);
+        }
+
+        .project-card {
+            background: var(--bg-glass);
+            border: 1px solid var(--border-glass);
+            border-radius: var(--radius-md);
+            overflow: hidden;
+            transition: var(--transition-base);
+        }
+
+        .project-card:hover {
+            border-color: var(--accent-blue);
+            transform: translateY(-6px);
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.4), 0 0 50px rgba(41, 121, 255, 0.1);
+        }
+
+        .project-header {
+            padding: var(--space-lg);
+            border-bottom: 1px solid var(--border-glass);
+            background: linear-gradient(135deg, rgba(0, 229, 255, 0.05), rgba(41, 121, 255, 0.05));
+        }
+
+        .project-status {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-family: var(--font-mono);
+            font-size: 0.7rem;
+            color: var(--accent-green);
+            margin-bottom: var(--space-sm);
+        }
+
+        .project-status .dot {
+            width: 6px;
+            height: 6px;
+            background: var(--accent-green);
+            border-radius: 50%;
+        }
+
+        .project-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .project-body {
+            padding: var(--space-lg);
+        }
+
+        .project-section {
+            margin-bottom: var(--space-md);
+        }
+
+        .project-section:last-child {
+            margin-bottom: 0;
+        }
+
+        .project-section-title {
+            font-family: var(--font-mono);
+            font-size: 0.7rem;
+            color: var(--accent-cyan);
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            margin-bottom: var(--space-xs);
+        }
+
+        .project-section-text {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+            line-height: 1.6;
+        }
+
+        .project-result {
+            background: rgba(0, 230, 118, 0.1);
+            border: 1px solid rgba(0, 230, 118, 0.2);
+            border-radius: var(--radius-sm);
+            padding: var(--space-sm) var(--space-md);
+            margin-top: var(--space-md);
+        }
+
+        .project-result-text {
+            font-family: var(--font-mono);
+            font-size: 0.85rem;
+            color: var(--accent-green);
+        }
+
+        /* ═══════════════════════════════════════════════════════════════
+           AI AUTOMATION LAYER
+           ═══════════════════════════════════════════════════════════════ */
+        .ai-section {
+            background: linear-gradient(135deg, rgba(124, 77, 255, 0.05), rgba(0, 229, 255, 0.05));
+            border-radius: var(--radius-lg);
+            padding: var(--space-2xl);
+            border: 1px solid var(--border-glass);
+        }
+
+        .ai-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: var(--space-lg);
+            margin-top: var(--space-xl);
+        }
+
+        .ai-card {
+            background: var(--bg-glass);
+            border: 1px solid var(--border-glass);
+            border-radius: var(--radius-md);
+            padding: var(--space-lg);
+            text-align: center;
+            transition: var(--transition-base);
+        }
+
+        .ai-card:hover {
+            border-color: var(--accent-purple);
+            transform: translateY(-4px);
+            box-shadow: 0 15px 40px rgba(124, 77, 255, 0.15);
+        }
+
+        .ai-logo {
+            width: 60px;
+            height: 60px;
+            margin: 0 auto var(--space-sm);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, rgba(124, 77, 255, 0.2), rgba(0, 229, 255, 0.2));
+            border-radius: var(--radius-md);
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--accent-purple);
+        }
+
+        .ai-name {
+            font-family: var(--font-mono);
+            font-size: 1rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: var(--space-xs);
+        }
+
+        .ai-desc {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            margin-bottom: var(--space-md);
+        }
+
+        .ai-features {
+            text-align: left;
+        }
+
+        .ai-feature {
+            font-family: var(--font-mono);
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            padding: 4px 0;
+            border-bottom: 1px solid var(--border-glass);
+        }
+
+        .ai-feature:last-child {
+            border-bottom: none;
+        }
+
+        /* ═══════════════════════════════════════════════════════════════
+           SYSTEM ARCHITECTURE
+           ═══════════════════════════════════════════════════════════════ */
+        .architecture-diagram {
+            display: flex;
+            flex-direction: column;
+            gap: var(--space-lg);
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        .arch-layer {
+            display: flex;
+            align-items: center;
+            gap: var(--space-md);
+        }
+
+        .arch-label {
+            width: 140px;
+            flex-shrink: 0;
+            font-family: var(--font-mono);
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            text-align: right;
+        }
+
+        .arch-content {
+            flex: 1;
+            display: flex;
+            gap: var(--space-sm);
+        }
+
+        .arch-node {
+            flex: 1;
+            background: var(--bg-glass);
+            border: 1px solid var(--border-glass);
+            border-radius: var(--radius-md);
+            padding: var(--space-md) var(--space-lg);
+            text-align: center;
+            transition: var(--transition-base);
+        }
+
+        .arch-node:hover {
+            border-color: var(--accent-cyan);
+            box-shadow: 0 0 30px rgba(0, 229, 255, 0.15);
+        }
+
+        .arch-node-title {
+            font-family: var(--font-mono);
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: var(--accent-cyan);
+            margin-bottom: 0.25rem;
+        }
+
+        .arch-node-desc {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+        }
+
+        .arch-connector {
+            display: flex;
+            justify-content: center;
+            padding-left: 140px;
+        }
+
+        .arch-connector-line {
+            width: 2px;
+            height: 30px;
+            background: linear-gradient(180deg, var(--accent-cyan), var(--accent-purple));
+            position: relative;
+        }
+
+        .arch-connector-line::after {
+            content: '▼';
+            position: absolute;
+            bottom: -15px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: var(--accent-purple);
+            font-size: 0.7rem;
+        }
+
+        /* ═══════════════════════════════════════════════════════════════
+           STORY SECTION
+           ═══════════════════════════════════════════════════════════════ */
+        .story-content {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .story-block {
+            margin-bottom: var(--space-xl);
+        }
+
+        .story-block:last-child {
+            margin-bottom: 0;
+        }
+
+        .story-block h3 {
+            font-family: var(--font-mono);
+            font-size: 1rem;
+            color: var(--accent-cyan);
+            margin-bottom: var(--space-sm);
+        }
+
+        .story-block p {
+            font-size: 1rem;
+            color: var(--text-secondary);
+            line-height: 1.8;
+        }
+
+        /* ═══════════════════════════════════════════════════════════════
+           FOOTER
+           ═══════════════════════════════════════════════════════════════ */
+        footer {
+            border-top: 1px solid var(--border-glass);
+            padding: var(--space-2xl) var(--container-padding);
+            text-align: center;
+        }
+
+        .footer-content {
+            max-width: var(--container-max);
+            margin: 0 auto;
+        }
+
+        .footer-logo {
+            font-family: var(--font-mono);
+            font-size: 1rem;
+            font-weight: 600;
+            color: var(--accent-cyan);
+            margin-bottom: var(--space-xs);
+        }
+
+        .footer-name {
+            font-family: var(--font-display);
+            font-size: 1.125rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: var(--space-xs);
+        }
+
+        .footer-text {
+            font-family: var(--font-mono);
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            margin-bottom: var(--space-xs);
+        }
+
+        .footer-text:last-child {
+            margin-bottom: 0;
+        }
+
+        /* ═══════════════════════════════════════════════════════════════
+           SCROLL REVEAL ANIMATIONS
+           ═══════════════════════════════════════════════════════════════ */
+        .reveal {
+            opacity: 0;
+            transform: translateY(30px);
+            transition: opacity 0.8s ease, transform 0.8s ease;
+        }
+
+        .reveal.active {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .reveal-delay-1 { transition-delay: 0.1s; }
+        .reveal-delay-2 { transition-delay: 0.2s; }
+        .reveal-delay-3 { transition-delay: 0.3s; }
+        .reveal-delay-4 { transition-delay: 0.4s; }
+
+        /* ═══════════════════════════════════════════════════════════════
+           RESPONSIVE DESIGN
+           ═══════════════════════════════════════════════════════════════ */
+        @media (max-width: 1024px) {
+            .metrics-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            
+            .arch-label {
+                width: 100px;
+            }
+        }
+
+        @media (max-width: 768px) {
+            :root {
+                --container-padding: 1.25rem;
+                --space-3xl: 4rem;
+            }
+
+            .metrics-grid {
+                grid-template-columns: 1fr 1fr;
+            }
+
+            .nav-status span:last-child {
+                display: none;
+            }
+
+            .nav-identity {
+                display: none;
+            }
+
+            .hero-buttons {
+                flex-direction: column;
+            }
+
+            .btn {
+                width: 100%;
+            }
+
+            .hero-identity {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 0;
+            }
+
+            .identity-divider {
+                display: none;
+            }
+
+            .timeline {
+                padding-left: 30px;
+            }
+
+            .timeline-marker {
+                left: -15px;
+                width: 28px;
+                height: 28px;
+                font-size: 0.7rem;
+            }
+
+            .arch-layer {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            .arch-label {
+                width: 100%;
+                text-align: left;
+                margin-bottom: var(--space-xs);
+            }
+
+            .arch-connector {
+                padding-left: 0;
+            }
+
+            .ai-section {
+                padding: var(--space-lg);
+            }
+        }
+
+        @media (max-width: 480px) {
+            :root {
+                --container-padding: 1rem;
+                --space-3xl: 3rem;
+            }
+
+            .metrics-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .metric-card {
+                display: flex;
+                align-items: center;
+                text-align: left;
+                gap: var(--space-md);
+            }
+
+            .metric-icon {
+                margin: 0;
+            }
+
+            .projects-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+<script src="https://sites.super.myninja.ai/_assets/ninja-daytona-script.js"></script>
+</head>
+<body>
+    <!-- BOOT SCREEN -->
+    <div id="boot-screen">
+        <div class="boot-logo">System Initialize</div>
+        <div class="boot-loader">
+            <div class="boot-text" id="boot-text">SYSTEM INITIALIZING...</div>
+            <div class="boot-progress-track">
+                <div class="boot-progress-bar" id="boot-progress"></div>
+            </div>
+            <div class="boot-modules" id="boot-modules"></div>
+        </div>
+    </div>
+
+    <!-- ANIMATED BACKGROUND -->
+    <div class="bg-container">
+        <div class="bg-grid"></div>
+        <div class="bg-glow bg-glow-1"></div>
+        <div class="bg-glow bg-glow-2"></div>
+        <div class="bg-glow bg-glow-3"></div>
+    </div>
+
+    <!-- NAVIGATION -->
+    <nav class="nav">
+        <div class="nav-inner">
+            <div class="nav-brand">
+                <a href="#" class="nav-logo">OPS_DASHBOARD</a>
+                <span class="nav-identity">James Xander Quinitio</span>
+            </div>
+            <div class="nav-status">
+                <span class="status-dot"></span>
+                <span>SYSTEM ONLINE</span>
+                <span>v2.0.25</span>
+            </div>
+        </div>
+    </nav>
+
+    <main>
+        <!-- HERO SECTION -->
+        <section class="hero">
+            <div class="container">
+                <div class="hero-content">
+                    <div class="hero-badge">
+                        <span class="status-dot"></span>
+                        OPERATIONS & AUTOMATION SYSTEM
+                    </div>
+                    <h1 class="hero-title">
+                        <span class="line"><span class="word">Operations</span>&nbsp;<span class="word">&</span>&nbsp;<span class="word">Automation</span></span>
+                        <span class="line"><span class="word">System</span>&nbsp;<span class="word">Dashboard</span></span>
+                    </h1>
+                    <p class="hero-identity">
+                        <span class="identity-name">James Xander Quinitio</span>
+                        <span class="identity-divider">|</span>
+                        <span class="identity-title">Operations Manager | Automation & Systems Specialist</span>
+                    </p>
+                    <p class="hero-subtitle">
+                        <span id="typewriter"></span><span class="typing-cursor"></span>
+                    </p>
+                    <div class="hero-buttons">
+                        <a href="#modules" class="btn btn-primary">
+                            <span>View Systems</span>
+                            <span>→</span>
+                        </a>
+                        <a href="#projects" class="btn btn-secondary">
+                            <span>Automation Modules</span>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- METRICS SECTION -->
+        <section id="metrics">
+            <div class="container">
+                <div class="section-header reveal">
+                    <p class="section-label">System Impact</p>
+                    <h2 class="section-title">Performance Metrics</h2>
+                    <p class="section-subtitle">Real-time operational efficiency statistics</p>
+                </div>
+                <div class="metrics-grid">
+                    <div class="metric-card reveal reveal-delay-1">
+                        <div class="metric-icon">⚡</div>
+                        <div class="metric-value"><span class="prefix">+</span><span class="counter" data-target="25">0</span>%</div>
+                        <div class="metric-label">Workflow Efficiency</div>
+                    </div>
+                    <div class="metric-card reveal reveal-delay-2">
+                        <div class="metric-icon">📦</div>
+                        <div class="metric-value"><span class="prefix">+</span><span class="counter" data-target="30">0</span>%</div>
+                        <div class="metric-label">Stock Accuracy</div>
+                    </div>
+                    <div class="metric-card reveal reveal-delay-3">
+                        <div class="metric-icon">🔧</div>
+                        <div class="metric-value"><span class="counter" data-target="5">0</span>+</div>
+                        <div class="metric-label">Systems Built</div>
+                    </div>
+                    <div class="metric-card reveal reveal-delay-4">
+                        <div class="metric-icon">👥</div>
+                        <div class="metric-value">Active</div>
+                        <div class="metric-label">Team Managed</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- SYSTEM MODULES -->
+        <section id="modules">
+            <div class="container">
+                <div class="section-header reveal">
+                    <p class="section-label">Core Systems</p>
+                    <h2 class="section-title">System Modules</h2>
+                    <p class="section-subtitle">Operational infrastructure components</p>
+                </div>
+                <div class="modules-grid">
+                    <div class="module-card reveal reveal-delay-1">
+                        <div class="module-header">
+                            <div class="module-icon">⚙️</div>
+                            <div class="module-info">
+                                <h3>Operations Engine</h3>
+                                <span class="tag">ACTIVE</span>
+                            </div>
+                        </div>
+                        <p class="module-desc">Team management and daily operations coordination. Ensures tasks are tracked, completed, and aligned with business goals.</p>
+                        <div class="module-tech">
+                            <span class="tech-tag">Team Leadership</span>
+                            <span class="tech-tag">Process Management</span>
+                            <span class="tech-tag">Coordination</span>
+                        </div>
+                    </div>
+                    <div class="module-card reveal reveal-delay-2">
+                        <div class="module-header">
+                            <div class="module-icon">📊</div>
+                            <div class="module-info">
+                                <h3>Automation Layer</h3>
+                                <span class="tag">CORE</span>
+                            </div>
+                        </div>
+                        <p class="module-desc">Google Sheets-based automation with custom scripts. Centralized data management and workflow optimization.</p>
+                        <div class="module-tech">
+                            <span class="tech-tag">Google Sheets</span>
+                            <span class="tech-tag">Apps Script</span>
+                            <span class="tech-tag">Automation</span>
+                        </div>
+                    </div>
+                    <div class="module-card reveal reveal-delay-3">
+                        <div class="module-header">
+                            <div class="module-icon">📈</div>
+                            <div class="module-info">
+                                <h3>Data Processing Core</h3>
+                                <span class="tag">ANALYTICS</span>
+                            </div>
+                        </div>
+                        <p class="module-desc">Reporting and analytics system. Transforms raw operational data into actionable insights for decision-making.</p>
+                        <div class="module-tech">
+                            <span class="tech-tag">Data Analysis</span>
+                            <span class="tech-tag">Reporting</span>
+                            <span class="tech-tag">Dashboards</span>
+                        </div>
+                    </div>
+                    <div class="module-card reveal reveal-delay-4">
+                        <div class="module-header">
+                            <div class="module-icon">🤖</div>
+                            <div class="module-info">
+                                <h3>AI Integration Layer</h3>
+                                <span class="tag">ENHANCED</span>
+                            </div>
+                        </div>
+                        <p class="module-desc">AI-powered automation for reporting, summaries, and workflow optimization. Reduces manual workload significantly.</p>
+                        <div class="module-tech">
+                            <span class="tech-tag">Claude AI</span>
+                            <span class="tech-tag">ChatGPT</span>
+                            <span class="tech-tag">AI Automation</span>
+                        </div>
+                    </div>
+                    <div class="module-card reveal reveal-delay-1">
+                        <div class="module-header">
+                            <div class="module-icon">🎨</div>
+                            <div class="module-info">
+                                <h3>Frontend Systems</h3>
+                                <span class="tag">INTERFACE</span>
+                            </div>
+                        </div>
+                        <p class="module-desc">HTML/CSS/JS tools connected to backend systems. Creates visual interfaces for operational data.</p>
+                        <div class="module-tech">
+                            <span class="tech-tag">HTML</span>
+                            <span class="tech-tag">CSS</span>
+                            <span class="tech-tag">JavaScript</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- SYSTEM EVOLUTION TIMELINE -->
+        <section id="evolution">
+            <div class="container">
+                <div class="section-header reveal" style="text-align: center;">
+                    <p class="section-label">Growth Path</p>
+                    <h2 class="section-title">System Evolution</h2>
+                    <p class="section-subtitle" style="margin: 0 auto;">From operator to system builder</p>
+                </div>
+                <div class="timeline">
+                    <div class="timeline-item reveal">
+                        <div class="timeline-marker">1</div>
+                        <div class="timeline-content">
+                            <p class="timeline-phase">Foundation</p>
+                            <h3 class="timeline-title">Manual Operations</h3>
+                            <p class="timeline-desc">Started with traditional warehouse management. Learned the fundamentals of operational workflows and team coordination.</p>
+                        </div>
+                    </div>
+                    <div class="timeline-item reveal">
+                        <div class="timeline-marker">2</div>
+                        <div class="timeline-content">
+                            <p class="timeline-phase">Discovery</p>
+                            <h3 class="timeline-title">Google Sheets Optimization</h3>
+                            <p class="timeline-desc">Discovered the power of spreadsheets for data management. Began building structured tracking systems.</p>
+                        </div>
+                    </div>
+                    <div class="timeline-item reveal">
+                        <div class="timeline-marker">3</div>
+                        <div class="timeline-content">
+                            <p class="timeline-phase">Enhancement</p>
+                            <h3 class="timeline-title">Advanced Formulas + Scripts</h3>
+                            <p class="timeline-desc">Moved beyond basic formulas. Started using Apps Script to automate repetitive tasks and create dynamic systems.</p>
+                        </div>
+                    </div>
+                    <div class="timeline-item reveal">
+                        <div class="timeline-marker">4</div>
+                        <div class="timeline-content">
+                            <p class="timeline-phase">Development</p>
+                            <h3 class="timeline-title">Full System Building</h3>
+                            <p class="timeline-desc">Built comprehensive dashboards with structured data flow. Created centralized systems for team operations.</p>
+                        </div>
+                    </div>
+                    <div class="timeline-item reveal">
+                        <div class="timeline-marker">5</div>
+                        <div class="timeline-content">
+                            <p class="timeline-phase">Integration</p>
+                            <h3 class="timeline-title">HTML + Google Sheets Hybrid</h3>
+                            <p class="timeline-desc">Connected frontend interfaces to backend data. Created custom tools that bridge visual dashboards with operational data.</p>
+                        </div>
+                    </div>
+                    <div class="timeline-item reveal">
+                        <div class="timeline-marker">6</div>
+                        <div class="timeline-content">
+                            <p class="timeline-phase">Intelligence</p>
+                            <h3 class="timeline-title">AI-Assisted Automation</h3>
+                            <p class="timeline-desc">Integrated AI tools for intelligent automation. Automated reporting, summaries, and decision support systems.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- PROJECTS SECTION -->
+        <section id="projects">
+            <div class="container">
+                <div class="section-header reveal">
+                    <p class="section-label">Deployed Systems</p>
+                    <h2 class="section-title">Project Showcase</h2>
+                    <p class="section-subtitle">Production systems currently in operation</p>
+                </div>
+                <div class="projects-grid">
+                    <div class="project-card reveal reveal-delay-1">
+                        <div class="project-header">
+                            <p class="project-status"><span class="dot"></span> PRODUCTION</p>
+                            <h3 class="project-title">Inventory Automation System</h3>
+                        </div>
+                        <div class="project-body">
+                            <div class="project-section">
+                                <p class="project-section-title">Problem</p>
+                                <p class="project-section-text">Manual inventory tracking was time-consuming and prone to errors. Stock discrepancies caused operational delays.</p>
+                            </div>
+                            <div class="project-section">
+                                <p class="project-section-title">Solution</p>
+                                <p class="project-section-text">Built a centralized Google Sheets system with automation scripts. Implemented real-time stock tracking with threshold alerts.</p>
+                            </div>
+                            <div class="project-result">
+                                <p class="project-result-text">↑ 30% improvement in stock accuracy</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="project-card reveal reveal-delay-2">
+                        <div class="project-header">
+                            <p class="project-status"><span class="dot"></span> PRODUCTION</p>
+                            <h3 class="project-title">Centralized Dashboard System</h3>
+                        </div>
+                        <div class="project-body">
+                            <div class="project-section">
+                                <p class="project-section-title">Problem</p>
+                                <p class="project-section-text">Data scattered across multiple files. Manual reporting took hours and was often outdated by the time it was completed.</p>
+                            </div>
+                            <div class="project-section">
+                                <p class="project-section-title">Solution</p>
+                                <p class="project-section-text">Created a unified dashboard that aggregates data from multiple sources. Automated report generation with scheduled updates.</p>
+                            </div>
+                            <div class="project-result">
+                                <p class="project-result-text">↓ 70% reduction in reporting time</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="project-card reveal reveal-delay-3">
+                        <div class="project-header">
+                            <p class="project-status"><span class="dot"></span> PRODUCTION</p>
+                            <h3 class="project-title">HTML + Sheets Hybrid Tool</h3>
+                        </div>
+                        <div class="project-body">
+                            <div class="project-section">
+                                <p class="project-section-title">Problem</p>
+                                <p class="project-section-text">Google Sheets interface was limiting for complex data visualization. Team needed a more intuitive way to interact with data.</p>
+                            </div>
+                            <div class="project-section">
+                                <p class="project-section-title">Solution</p>
+                                <p class="project-section-text">Built custom HTML frontend that connects to Google Sheets backend. Created a proper UI/UX for operational data management.</p>
+                            </div>
+                            <div class="project-result">
+                                <p class="project-result-text">✓ Frontend + Backend system integration</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="project-card reveal reveal-delay-4">
+                        <div class="project-header">
+                            <p class="project-status"><span class="dot"></span> PRODUCTION</p>
+                            <h3 class="project-title">Warehouse Operations System</h3>
+                        </div>
+                        <div class="project-body">
+                            <div class="project-section">
+                                <p class="project-section-title">Problem</p>
+                                <p class="project-section-text">Lack of structured workflow systems. Team coordination was inefficient with no clear task tracking or performance visibility.</p>
+                            </div>
+                            <div class="project-section">
+                                <p class="project-section-title">Solution</p>
+                                <p class="project-section-text">Implemented structured workflow systems with task tracking. Created performance dashboards for team coordination and execution.</p>
+                            </div>
+                            <div class="project-result">
+                                <p class="project-result-text">↑ 25% improvement in workflow efficiency</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- AI AUTOMATION LAYER -->
+        <section id="ai-layer">
+            <div class="container">
+                <div class="ai-section reveal">
+                    <div class="section-header" style="margin-bottom: 0;">
+                        <p class="section-label">AI Integration</p>
+                        <h2 class="section-title">AI Automation Layer</h2>
+                        <p class="section-subtitle">Intelligent systems for operational enhancement</p>
+                    </div>
+                    <div class="ai-grid">
+                        <div class="ai-card">
+                            <div class="ai-logo">C</div>
+                            <p class="ai-name">Claude AI</p>
+                            <p class="ai-desc">Advanced reasoning and analysis</p>
+                            <div class="ai-features">
+                                <p class="ai-feature">→ Automated report generation</p>
+                                <p class="ai-feature">→ Document summarization</p>
+                                <p class="ai-feature">→ Workflow optimization logic</p>
+                                <p class="ai-feature">→ Data analysis assistance</p>
+                            </div>
+                        </div>
+                        <div class="ai-card">
+                            <div class="ai-logo">G</div>
+                            <p class="ai-name">ChatGPT</p>
+                            <p class="ai-desc">Conversational AI assistance</p>
+                            <div class="ai-features">
+                                <p class="ai-feature">→ Task automation scripts</p>
+                                <p class="ai-feature">→ Process documentation</p>
+                                <p class="ai-feature">→ Quick data summaries</p>
+                                <p class="ai-feature">→ Decision support</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- SYSTEM ARCHITECTURE -->
+        <section id="architecture">
+            <div class="container">
+                <div class="section-header reveal" style="text-align: center;">
+                    <p class="section-label">Technical Stack</p>
+                    <h2 class="section-title">System Architecture</h2>
+                    <p class="section-subtitle" style="margin: 0 auto;">The infrastructure powering operational excellence</p>
+                </div>
+                <div class="architecture-diagram reveal">
+                    <div class="arch-layer">
+                        <div class="arch-label">Frontend</div>
+                        <div class="arch-content">
+                            <div class="arch-node">
+                                <p class="arch-node-title">HTML</p>
+                                <p class="arch-node-desc">Structure</p>
+                            </div>
+                            <div class="arch-node">
+                                <p class="arch-node-title">CSS</p>
+                                <p class="arch-node-desc">Styling</p>
+                            </div>
+                            <div class="arch-node">
+                                <p class="arch-node-title">JavaScript</p>
+                                <p class="arch-node-desc">Interactivity</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="arch-connector">
+                        <div class="arch-connector-line"></div>
+                    </div>
+                    <div class="arch-layer">
+                        <div class="arch-label">Backend</div>
+                        <div class="arch-content">
+                            <div class="arch-node">
+                                <p class="arch-node-title">Google Sheets</p>
+                                <p class="arch-node-desc">Database Layer</p>
+                            </div>
+                            <div class="arch-node">
+                                <p class="arch-node-title">Apps Script</p>
+                                <p class="arch-node-desc">Automation Engine</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="arch-connector">
+                        <div class="arch-connector-line"></div>
+                    </div>
+                    <div class="arch-layer">
+                        <div class="arch-label">AI Layer</div>
+                        <div class="arch-content">
+                            <div class="arch-node">
+                                <p class="arch-node-title">Claude AI</p>
+                                <p class="arch-node-desc">Analysis & Reports</p>
+                            </div>
+                            <div class="arch-node">
+                                <p class="arch-node-title">ChatGPT</p>
+                                <p class="arch-node-desc">Automation Support</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- STORY SECTION -->
+        <section id="story">
+            <div class="container">
+                <div class="section-header reveal" style="text-align: center;">
+                    <p class="section-label">Background</p>
+                    <h2 class="section-title">How I Built My Systems Thinking</h2>
+                </div>
+                <div class="story-content reveal">
+                    <div class="story-block">
+                        <h3>01. Warehouse Operations Foundation</h3>
+                        <p>My journey began in warehouse operations management at Likha Digital Trading Inc. Working directly with teams and processes, I experienced firsthand the challenges of manual operations—tracking issues, communication gaps, and inefficient workflows that consumed valuable time.</p>
+                    </div>
+                    <div class="story-block">
+                        <h3>02. Discovery of Google Sheets Automation</h3>
+                        <p>While managing daily operations, I started exploring Google Sheets beyond basic spreadsheets. I discovered that with the right structure and formulas, I could build systems that automatically tracked, calculated, and organized operational data—transforming chaos into clarity.</p>
+                    </div>
+                    <div class="story-block">
+                        <h3>03. Scripting and System Design</h3>
+                        <p>As my systems grew more complex, basic formulas weren't enough. I learned Apps Script to create custom automations—automated alerts, data syncing, and report generation. This marked my transition from spreadsheet user to system builder.</p>
+                    </div>
+                    <div class="story-block">
+                        <h3>04. Building Structured Dashboards</h3>
+                        <p>I began creating comprehensive dashboards that served as operational command centers. These systems provided real-time visibility into inventory, team performance, and workflow status—enabling data-driven decisions and proactive management.</p>
+                    </div>
+                    <div class="story-block">
+                        <h3>05. HTML + Google Sheets Integration</h3>
+                        <p>To overcome the limitations of spreadsheet interfaces, I learned HTML, CSS, and JavaScript. I built custom frontend tools that connected to Google Sheets backends, creating proper user interfaces for team members to interact with operational data intuitively.</p>
+                    </div>
+                    <div class="story-block">
+                        <h3>06. AI-Powered Automation</h3>
+                        <p>The latest evolution in my system building journey is integrating AI tools like Claude and ChatGPT. These enable intelligent automation—automated summaries, smart reporting, and decision support—pushing operational efficiency even further.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- FOOTER -->
+    <footer>
+        <div class="footer-content">
+            <p class="footer-name">James Xander Quinitio</p>
+            <p class="footer-text">Operations Manager | Automation & Systems Specialist</p>
+            <p class="footer-text">© 2025 // All Systems Operational</p>
+        </div>
+    </footer>
+
+    <script>
+        // ═══════════════════════════════════════════════════════════════
+        // BOOT SEQUENCE ANIMATION
+        // ═══════════════════════════════════════════════════════════════
+        const bootScreen = document.getElementById('boot-screen');
+        const bootText = document.getElementById('boot-text');
+        const bootProgress = document.getElementById('boot-progress');
+        const bootModules = document.getElementById('boot-modules');
+
+        const bootMessages = [
+            '> Loading system modules...',
+            '> Initializing automation engine...',
+            '> Connecting to data sources...',
+            '> Mounting AI subsystems...',
+            '> Establishing dashboard protocols...',
+            '> System ready.'
+        ];
+
+        let bootIndex = 0;
+        let progressValue = 0;
+
+        function runBootSequence() {
+            if (bootIndex < bootMessages.length) {
+                const p = document.createElement('p');
+                p.textContent = bootMessages[bootIndex];
+                p.style.animationDelay = '0s';
+                bootModules.appendChild(p);
+                
+                progressValue = ((bootIndex + 1) / bootMessages.length) * 100;
+                bootProgress.style.width = progressValue + '%';
+                
+                if (bootIndex === bootMessages.length - 1) {
+                    bootText.textContent = 'SYSTEM ONLINE';
+                }
+                
+                bootIndex++;
+                setTimeout(runBootSequence, 400);
+            } else {
+                setTimeout(() => {
+                    bootScreen.classList.add('hidden');
+                    setTimeout(() => {
+                        startTypewriter();
+                        animateMetrics();
+                    }, 500);
+                }, 600);
+            }
+        }
+
+        window.addEventListener('load', () => {
+            setTimeout(runBootSequence, 300);
+        });
+
+        // ═══════════════════════════════════════════════════════════════
+        // TYPEWRITER EFFECT
+        // ═══════════════════════════════════════════════════════════════
+        const typewriterText = "Building scalable systems, automation workflows, and operational efficiency.";
+        const typewriterElement = document.getElementById('typewriter');
+        let charIndex = 0;
+
+        function startTypewriter() {
+            if (charIndex < typewriterText.length) {
+                typewriterElement.textContent += typewriterText.charAt(charIndex);
+                charIndex++;
+                setTimeout(startTypewriter, 40);
+            }
+        }
+
+        // ═══════════════════════════════════════════════════════════════
+        // ANIMATED COUNTERS
+        // ═══════════════════════════════════════════════════════════════
+        function animateMetrics() {
+            const counters = document.querySelectorAll('.counter');
+            
+            counters.forEach(counter => {
+                const target = parseInt(counter.getAttribute('data-target'));
+                const duration = 2000;
+                const increment = target / (duration / 16);
+                let current = 0;
+
+                const updateCounter = () => {
+                    current += increment;
+                    if (current < target) {
+                        counter.textContent = Math.floor(current);
+                        requestAnimationFrame(updateCounter);
+                    } else {
+                        counter.textContent = target;
+                    }
+                };
+
+                updateCounter();
+            });
+        }
+
+        // ═══════════════════════════════════════════════════════════════
+        // SCROLL REVEAL ANIMATION
+        // ═══════════════════════════════════════════════════════════════
+        const observerOptions = {
+            root: null,
+            rootMargin: '0px',
+            threshold: 0.1
+        };
+
+        const revealObserver = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('active');
+                    revealObserver.unobserve(entry.target);
+                }
+            });
+        }, observerOptions);
+
+        document.querySelectorAll('.reveal').forEach(el => {
+            revealObserver.observe(el);
+        });
+
+        // ═══════════════════════════════════════════════════════════════
+        // SMOOTH SCROLL
+        // ═══════════════════════════════════════════════════════════════
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function(e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) {
+                    target.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'start'
+                    });
+                }
+            });
+        });
+    </script>
+</body>
+</html>
